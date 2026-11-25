@@ -43,12 +43,6 @@
   border-radius: 50%;
 }
 
-.brand-amp {
-  color: #8d9878;
-  font-family: var(--serif);
-  padding: 0 1px;
-}
-
 .main-nav {
   display: flex;
   align-items: center;

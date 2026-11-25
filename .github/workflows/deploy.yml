@@ -35,16 +35,53 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Run unit and component tests
+        run: npm test
+
       - name: Build production site
         run: npm run build
         env:
           VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
 
+      - name: Smoke-test built site and assets
+        run: npm run test:integration
+
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v5
         with:
           path: dist
+
+  container:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Build and publish container to GitHub Container Registry
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          IMAGE_NAME: ghcr.io/kulasekara02/table-thyme-restaurant-booking
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
+        run: |
+          docker build \
+            --build-arg VITE_SUPABASE_URL \
+            --build-arg VITE_SUPABASE_ANON_KEY \
+            --tag "$IMAGE_NAME:$GITHUB_SHA" \
+            .
+          echo "$GH_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+          docker push "$IMAGE_NAME:$GITHUB_SHA"
+          docker tag "$IMAGE_NAME:$GITHUB_SHA" "$IMAGE_NAME:latest"
+          docker push "$IMAGE_NAME:latest"
 
   deploy:
     if: github.event_name != 'pull_request'

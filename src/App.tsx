@@ -387,10 +387,10 @@ function App() {
             setView('booking')
             setMenuOpen(false)
           }}
-          aria-label="Table & Thyme home"
+          aria-label="Fish restaurant home"
         >
           <span className="brand-mark"><Utensils size={18} strokeWidth={2.2} /></span>
-          <span>table<span className="brand-amp">&</span>thyme</span>
+          <span>Fish</span>
         </a>
         <button
           className="mobile-menu-toggle"
@@ -733,9 +733,9 @@ function App() {
       )}
 
       <footer className="site-footer">
-        <a className="brand footer-brand" href="#home"><span className="brand-mark"><Utensils size={16} /></span><span>table<span className="brand-amp">&</span>thyme</span></a>
+        <a className="brand footer-brand" href="#home"><span className="brand-mark"><Utensils size={16} /></span><span>Fish</span></a>
         <span>Good food is better shared.</span>
-        <span>© {currentYear} Table & Thyme</span>
+        <span>© {currentYear} Fish</span>
       </footer>
 
       {loginOpen && (

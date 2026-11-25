@@ -7,7 +7,11 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest run --environment jsdom",
+    "test:integration": "node scripts/smoke-test.mjs",
+    "k8s:deploy": "node scripts/deploy-blue-green.mjs",
+    "k8s:rollback": "node scripts/deploy-blue-green.mjs --rollback"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.119.2",
@@ -18,12 +22,16 @@
   "devDependencies": {
     "@emnapi/core": "^2.0.0-beta.2",
     "@emnapi/runtime": "^2.0.0-beta.2",
+    "@testing-library/react": "^16.3.3",
     "@types/node": "^24.19.2",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
+    "jsdom": "^29.1.1",
     "oxlint": "^1.90.0",
     "typescript": "~7.0.2",
-    "vite": "^8.3.6"
+    "vite": "^8.3.6",
+    "vitest": "^5.1.1",
+    "yaml": "^2.9.1"
   }
 }
