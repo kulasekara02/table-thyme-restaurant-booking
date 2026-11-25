@@ -21,6 +21,15 @@ import {
   X,
 } from 'lucide-react'
 import type { Session } from '@supabase/supabase-js'
+import MenuPreorder from './components/MenuPreorder'
+import TableFloorPlan from './components/TableFloorPlan'
+import {
+  demoMenuItems,
+  demoTables,
+  formatPrice,
+  type MenuItem,
+  type RestaurantTable,
+} from './lib/restaurant'
 import { supabase } from './lib/supabase'
 import './App.css'
 
@@ -53,9 +62,11 @@ type Reservation = {
   status: ReservationStatus
   created_at: string
   customer?: Customer
+  table?: { table_number: string } | Array<{ table_number: string }> | null
+  order_items?: Array<{ item_name: string; quantity: number }>
 }
 
-const timeSlots = Array.from({ length: 10 }, (_, index) => {
+const timeSlots = Array.from({ length: 7 }, (_, index) => {
   const minutes = 17 * 60 + index * 30
   return `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`
 })
@@ -83,6 +94,11 @@ const formatTime = (date: string) =>
     minute: '2-digit',
   }).format(new Date(date))
 
+const getReservationTableNumber = (reservation: Reservation) =>
+  Array.isArray(reservation.table)
+    ? reservation.table[0]?.table_number
+    : reservation.table?.table_number
+
 function App() {
   const [view, setView] = useState<View>('booking')
   const [section, setSection] = useState<StaffSection>('reservations')
@@ -101,6 +117,26 @@ function App() {
   const [bookingBusy, setBookingBusy] = useState(false)
   const [bookingError, setBookingError] = useState('')
   const [bookingComplete, setBookingComplete] = useState(false)
+  const [bookingConfirmation, setBookingConfirmation] = useState<{
+    tableNumber: string
+    reservationAt: string
+    preorderCount: number
+  } | null>(null)
+  const [availableTables, setAvailableTables] = useState<RestaurantTable[]>(
+    supabase ? [] : demoTables,
+  )
+  const [availabilityStatus, setAvailabilityStatus] = useState<
+    'loading' | 'ready' | 'error' | 'demo'
+  >(supabase ? 'loading' : 'demo')
+  const [availabilityError, setAvailabilityError] = useState('')
+  const [selectedTableId, setSelectedTableId] = useState('')
+  const [menuItems, setMenuItems] = useState<MenuItem[]>(
+    supabase ? [] : demoMenuItems,
+  )
+  const [menuLoading, setMenuLoading] = useState(Boolean(supabase))
+  const [menuError, setMenuError] = useState('')
+  const [orderQuantities, setOrderQuantities] = useState<Record<string, number>>({})
+  const [availabilityRefreshKey, setAvailabilityRefreshKey] = useState(0)
   const [bookingForm, setBookingForm] = useState({
     fullName: '',
     email: '',
@@ -132,6 +168,72 @@ function App() {
 
     return () => subscription.unsubscribe()
   }, [])
+
+  useEffect(() => {
+    if (!supabase) return
+
+    let active = true
+    void supabase
+      .from('menu_items')
+      .select('id, name, description, category, price_cents, currency')
+      .eq('is_available', true)
+      .order('category', { ascending: true })
+      .order('name', { ascending: true })
+      .then(({ data, error }) => {
+        if (!active) return
+        if (error) {
+          setMenuError(`Unable to load the pre-order menu: ${error.message}`)
+          setMenuItems([])
+          setMenuLoading(false)
+          return
+        }
+        setMenuItems((data ?? []) as MenuItem[])
+        setMenuLoading(false)
+      })
+
+    return () => {
+      active = false
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!supabase || !bookingForm.date || !bookingForm.time) return
+
+    let active = true
+    const reservationAt = new Date(`${bookingForm.date}T${bookingForm.time}`)
+    void supabase
+      .rpc('get_available_tables', {
+        p_reservation_at: reservationAt.toISOString(),
+        p_party_size: Number(bookingForm.partySize),
+      })
+      .then(({ data, error }) => {
+        if (!active) return
+        if (error) {
+          setAvailabilityError(`Unable to check table availability: ${error.message}`)
+          setAvailableTables([])
+          setSelectedTableId('')
+          setAvailabilityStatus('error')
+          return
+        }
+
+        const tables = (data ?? []) as RestaurantTable[]
+        setAvailableTables(tables)
+        setSelectedTableId((current) =>
+          tables.some((table) => table.id === current) ? current : '',
+        )
+        setAvailabilityError('')
+        setAvailabilityStatus('ready')
+      })
+
+    return () => {
+      active = false
+    }
+  }, [
+    bookingForm.date,
+    bookingForm.partySize,
+    bookingForm.time,
+    availabilityRefreshKey,
+  ])
 
   useEffect(() => {
     if (!supabase || !session?.user.id) return
@@ -170,7 +272,7 @@ function App() {
       const [reservationResult, customerResult, teamResult] = await Promise.all([
         supabase
           .from('reservations')
-          .select('id, customer_id, reservation_at, party_size, note, status, created_at')
+          .select('id, customer_id, reservation_at, party_size, note, status, created_at, table:restaurant_tables(table_number), order_items:reservation_order_items(item_name, quantity)')
           .order('reservation_at', { ascending: true }),
         supabase
           .from('customers')
@@ -234,12 +336,51 @@ function App() {
         reservation.customer?.email,
         reservation.customer?.phone,
         reservation.status,
+        getReservationTableNumber(reservation),
+        reservation.order_items?.map((item) => item.item_name).join(' '),
       ]
         .join(' ')
         .toLowerCase()
         .includes(query),
     )
   }, [reservations, search])
+
+  const selectedTable = availableTables.find((table) => table.id === selectedTableId)
+  const selectedItems = useMemo(
+    () =>
+      menuItems
+        .filter((item) => (orderQuantities[item.id] ?? 0) > 0)
+        .map((item) => ({ ...item, quantity: orderQuantities[item.id] ?? 0 })),
+    [menuItems, orderQuantities],
+  )
+  const preorderCount = selectedItems.reduce((total, item) => total + item.quantity, 0)
+  const preorderTotalCents = selectedItems.reduce(
+    (total, item) => total + item.price_cents * item.quantity,
+    0,
+  )
+  const preorderCurrency = selectedItems[0]?.currency ?? menuItems[0]?.currency ?? 'USD'
+
+  const updateReservationChoice = (field: 'date' | 'time' | 'partySize', value: string) => {
+    setBookingForm((current) => ({ ...current, [field]: value }))
+    setSelectedTableId('')
+    setBookingError('')
+    if (supabase) {
+      setAvailabilityError('')
+      setAvailabilityStatus('loading')
+    }
+  }
+
+  const updateOrderQuantity = (itemId: string, quantity: number) => {
+    setOrderQuantities((current) => {
+      const next = { ...current }
+      if (quantity <= 0) {
+        delete next[itemId]
+      } else {
+        next[itemId] = Math.min(quantity, 20)
+      }
+      return next
+    })
+  }
 
   const openStaff = () => {
     setMenuOpen(false)
@@ -273,15 +414,28 @@ function App() {
       setBookingError('Choose a future date and time for your reservation.')
       return
     }
+    if (!selectedTable) {
+      setBookingError('Choose an available table for your reservation.')
+      return
+    }
+    if (availabilityStatus !== 'ready') {
+      setBookingError('Wait for table availability to finish loading, then try again.')
+      return
+    }
 
     setBookingBusy(true)
-    const { error } = await supabase.rpc('create_reservation', {
+    const { error } = await supabase.rpc('create_reservation_with_preorder', {
       p_full_name: bookingForm.fullName.trim(),
       p_email: bookingForm.email.trim(),
       p_phone: bookingForm.phone.trim(),
       p_party_size: Number(bookingForm.partySize),
       p_reservation_at: reservationAt.toISOString(),
       p_note: bookingForm.note.trim(),
+      p_table_id: selectedTable.id,
+      p_items: selectedItems.map((item) => ({
+        menu_item_id: item.id,
+        quantity: item.quantity,
+      })),
     })
     setBookingBusy(false)
 
@@ -290,7 +444,14 @@ function App() {
       return
     }
 
+    setBookingConfirmation({
+      tableNumber: selectedTable.table_number,
+      reservationAt: reservationAt.toISOString(),
+      preorderCount,
+    })
     setBookingComplete(true)
+    setAvailabilityRefreshKey((current) => current + 1)
+    setOrderQuantities({})
     setBookingForm((current) => ({
       ...current,
       fullName: '',
@@ -375,7 +536,8 @@ function App() {
     )
   }
 
-  const bookingReady = Boolean(supabase)
+  const bookingReady =
+    Boolean(supabase) && availabilityStatus === 'ready' && Boolean(selectedTable)
 
   return (
     <div className="app-shell">
@@ -463,9 +625,26 @@ function App() {
                   <span className="success-icon"><Check size={23} /></span>
                   <div>
                     <h3>Your request is on its way.</h3>
-                    <p>Thanks for choosing us. Our team will be in touch to confirm your reservation.</p>
+                    <p>
+                      {bookingConfirmation
+                        ? `We received your request for ${bookingConfirmation.tableNumber} on ${formatDate(bookingConfirmation.reservationAt)} at ${formatTime(bookingConfirmation.reservationAt)}.`
+                        : 'Thanks for choosing us.'}{' '}
+                      {bookingConfirmation?.preorderCount
+                        ? `Your ${bookingConfirmation.preorderCount} pre-order item${bookingConfirmation.preorderCount === 1 ? '' : 's'} are included. `
+                        : ''}
+                      Our team will be in touch to confirm your reservation.
+                    </p>
                   </div>
-                  <button className="button button-outline" type="button" onClick={() => setBookingComplete(false)}>
+                  <button
+                    className="button button-outline"
+                    type="button"
+                    onClick={() => {
+                      setBookingComplete(false)
+                      setBookingConfirmation(null)
+                      setSelectedTableId('')
+                      setBookingError('')
+                    }}
+                  >
                     Make another request
                   </button>
                 </div>
@@ -515,7 +694,7 @@ function App() {
                       required
                       type="date"
                       value={bookingForm.date}
-                      onChange={(event) => setBookingForm({ ...bookingForm, date: event.target.value })}
+                      onChange={(event) => updateReservationChoice('date', event.target.value)}
                     />
                   </label>
                   <label className="field">
@@ -524,7 +703,7 @@ function App() {
                     <select
                       required
                       value={bookingForm.time}
-                      onChange={(event) => setBookingForm({ ...bookingForm, time: event.target.value })}
+                      onChange={(event) => updateReservationChoice('time', event.target.value)}
                     >
                       {timeSlots.map((time) => (
                         <option key={time} value={time}>
@@ -540,7 +719,7 @@ function App() {
                     <select
                       required
                       value={bookingForm.partySize}
-                      onChange={(event) => setBookingForm({ ...bookingForm, partySize: event.target.value })}
+                      onChange={(event) => updateReservationChoice('partySize', event.target.value)}
                     >
                       {Array.from({ length: 12 }, (_, index) => index + 1).map((count) => (
                         <option key={count} value={count}>{count} {count === 1 ? 'guest' : 'guests'}</option>
@@ -558,10 +737,42 @@ function App() {
                       placeholder="Dietary needs, special occasion, or a note for our team"
                     />
                   </label>
+                  <TableFloorPlan
+                    tables={availableTables}
+                    selectedTableId={selectedTableId}
+                    loading={availabilityStatus === 'loading'}
+                    error={availabilityError}
+                    demoMode={availabilityStatus === 'demo'}
+                    onSelect={(tableId) => {
+                      setSelectedTableId(tableId)
+                      setBookingError('')
+                    }}
+                  />
+                  <MenuPreorder
+                    items={menuItems}
+                    quantities={orderQuantities}
+                    loading={menuLoading}
+                    error={menuError}
+                    onQuantityChange={updateOrderQuantity}
+                  />
+                  <div className="booking-summary field-wide" aria-live="polite">
+                    <div>
+                      <span>Your table</span>
+                      <strong>{selectedTable?.table_number ?? 'Choose a table'}</strong>
+                    </div>
+                    <div>
+                      <span>Pre-order</span>
+                      <strong>
+                        {preorderCount > 0
+                          ? `${preorderCount} item${preorderCount === 1 ? '' : 's'} · ${formatPrice(preorderTotalCents, preorderCurrency)}`
+                          : 'Nothing selected'}
+                      </strong>
+                    </div>
+                  </div>
                   {bookingError && <p className="form-error field-wide" role="alert">{bookingError}</p>}
-                  {!bookingReady && (
+                  {!supabase && (
                     <p className="setup-notice field-wide">
-                      Online reservations will be available once the restaurant database is connected.
+                      Demo mode: the sample floor plan and menu are previews. Online reservations will be available once the restaurant database is connected and both migrations are applied.
                     </p>
                   )}
                   <div className="form-footer field-wide">
@@ -597,7 +808,7 @@ function App() {
               <h2>There’s a place<br />for you here.</h2>
             </div>
             <div className="visit-details">
-              <div><Clock3 size={19} /><p><strong>Hours</strong><span>Daily, 5:00 pm – 10:00 pm</span></p></div>
+              <div><Clock3 size={19} /><p><strong>Sample hours</strong><span>Daily, 5:00 pm – 10:00 pm</span></p></div>
               <div><Phone size={19} /><p><strong>Questions?</strong><span>Contact the restaurant directly</span></p></div>
               <a className="button button-light" href="#booking">Plan your visit <ArrowRight size={17} /></a>
             </div>
@@ -659,13 +870,21 @@ function App() {
                     {section === 'reservations' && (
                       <div className="table-scroll">
                         <table>
-                          <thead><tr><th>Guest</th><th>Date & time</th><th>Party</th><th>Note</th><th>Status</th></tr></thead>
+                          <thead><tr><th>Guest</th><th>Date & time</th><th>Table</th><th>Party</th><th>Pre-order</th><th>Note</th><th>Status</th></tr></thead>
                           <tbody>
                             {filteredReservations.map((reservation) => (
                               <tr key={reservation.id}>
                                 <td><strong>{reservation.customer?.full_name || 'Guest'}</strong><small>{reservation.customer?.email}</small></td>
                                 <td>{formatDate(reservation.reservation_at)}<small>{formatTime(reservation.reservation_at)}</small></td>
+                                <td>{getReservationTableNumber(reservation) || '—'}</td>
                                 <td>{reservation.party_size} {reservation.party_size === 1 ? 'guest' : 'guests'}</td>
+                                <td className="note-cell">
+                                  {reservation.order_items?.length
+                                    ? reservation.order_items
+                                      .map((item) => `${item.quantity} × ${item.item_name}`)
+                                      .join(', ')
+                                    : '—'}
+                                </td>
                                 <td className="note-cell">{reservation.note || '—'}</td>
                                 <td>
                                   <label className="status-select">
@@ -677,7 +896,7 @@ function App() {
                                 </td>
                               </tr>
                             ))}
-                            {filteredReservations.length === 0 && <tr><td className="empty-row" colSpan={5}>No reservations match your search.</td></tr>}
+                            {filteredReservations.length === 0 && <tr><td className="empty-row" colSpan={7}>No reservations match your search.</td></tr>}
                           </tbody>
                         </table>
                       </div>

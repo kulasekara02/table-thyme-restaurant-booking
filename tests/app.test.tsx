@@ -24,8 +24,25 @@ describe('Fish reservation experience', () => {
     ).toBeTruthy()
     expect(screen.getByLabelText('Your name')).toBeTruthy()
     expect(screen.getByLabelText('Email address')).toBeTruthy()
+    expect(screen.getByRole('group', { name: 'Choose your table' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Pre-order for your table.' })).toBeTruthy()
     expect(screen.getByRole('button', { name: /request a table/i }).hasAttribute('disabled')).toBe(true)
-    expect(screen.getByText(/database is connected/i)).toBeTruthy()
+    expect(screen.getByText(/online reservations will be available once the restaurant database is connected/i)).toBeTruthy()
+  })
+
+  it('lets guests preview a table and pre-order while keeping demo booking disabled', async () => {
+    const App = await loadAppWithoutBackend()
+    render(<App />)
+
+    const table = screen.getByRole('button', {
+      name: 'Table T01, 2 seats, Window',
+    })
+    fireEvent.click(table)
+    expect(table.getAttribute('aria-pressed')).toBe('true')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add Charred sourdough' }))
+    expect(screen.getByText(/1 item ·/)).toBeTruthy()
+    expect(screen.getByRole('button', { name: /request a table/i }).hasAttribute('disabled')).toBe(true)
   })
 
   it('explains that staff sign-in needs backend setup', async () => {

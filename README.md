@@ -23,9 +23,10 @@ Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in `.env.local` after confi
 ## Supabase setup
 
 1. Create a Supabase project.
-2. In the Supabase SQL Editor, run [`supabase/migrations/202611250001_initial_schema.sql`](./supabase/migrations/202611250001_initial_schema.sql).
-3. Invite the first administrator from **Authentication → Users**. The database trigger creates a staff profile.
-4. Promote that account in the SQL Editor, replacing the email:
+2. In order, run [`supabase/migrations/202611250001_initial_schema.sql`](./supabase/migrations/202611250001_initial_schema.sql) and [`supabase/migrations/202611250002_table_selection_and_preorders.sql`](./supabase/migrations/202611250002_table_selection_and_preorders.sql) in the Supabase SQL Editor.
+3. Replace the sample tables and menu items seeded by the second migration with the restaurant’s actual floor plan, prices, currency, and menu. The current sample layout, USD prices, and displayed 5–10 pm daily hours are placeholders; the booking flow assumes a two-hour table reservation and interprets times in the guest’s browser timezone.
+4. Invite the first administrator from **Authentication → Users**. The database trigger creates a staff profile.
+5. Promote that account in the SQL Editor, replacing the email:
 
    ```sql
    update public.profiles
@@ -33,10 +34,12 @@ Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in `.env.local` after confi
    where email = lower('owner@example.com');
    ```
 
-5. Add the project URL and public anon/publishable key to `.env.local`.
-6. Invite other employees from **Authentication → Users**. New users receive the `staff` role. Administrators can promote or demote employees in the Team view.
+6. Add the project URL and public anon/publishable key to `.env.local`.
+7. Invite other employees from **Authentication → Users**. New users receive the `staff` role. Administrators can promote or demote employees in the Team view.
 
-Reservation requests are stored as `pending` until staff confirm them. The MVP does not check table capacity or prevent overlapping reservations.
+Guests can choose an available table sized for their party and optionally add menu items to their reservation. Availability checks and reservation creation run in database functions; creation locks the selected table and rejects overlapping pending or confirmed reservations. Pre-order item names and prices are snapshotted for the staff reservation list. Requests are stored as `pending` until staff confirm them. No online payment is collected.
+
+Without Supabase configured, the site displays sample tables and menu items for preview, but does not submit bookings. After Supabase is configured, the floor plan and menu are read from the database, so update the seeded placeholder data before accepting real reservations.
 
 ## Automated development and deployment
 

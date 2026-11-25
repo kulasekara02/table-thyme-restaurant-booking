@@ -455,6 +455,339 @@
   grid-column: 1 / -1;
 }
 
+.field-help {
+  margin: 0;
+  color: #85877c;
+  font-size: 10px;
+  line-height: 1.6;
+}
+
+.floorplan-shell {
+  padding: 14px;
+  background: #f7f6f1;
+  border: 1px solid #e8e6dc;
+  border-radius: 3px;
+}
+
+.floorplan-top-label {
+  margin-bottom: 8px;
+  color: #8d9183;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-align: center;
+}
+
+.floorplan-room {
+  min-height: 275px;
+  position: relative;
+  overflow: hidden;
+  background:
+    linear-gradient(90deg, transparent 49.8%, rgba(108, 116, 95, .08) 50%, transparent 50.2%),
+    linear-gradient(0deg, transparent 49.8%, rgba(108, 116, 95, .08) 50%, transparent 50.2%),
+    #f0efe8;
+  border: 1px solid #ddded3;
+  border-radius: 3px;
+}
+
+.floorplan-room::before {
+  content: '';
+  position: absolute;
+  inset: 12px;
+  border: 1px dashed #d4d7cb;
+  pointer-events: none;
+}
+
+.floorplan-area-label {
+  position: absolute;
+  color: #a0a294;
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 1.4px;
+  pointer-events: none;
+}
+
+.area-dining {
+  top: 8%;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.area-patio {
+  right: 3%;
+  bottom: 4%;
+  writing-mode: vertical-rl;
+}
+
+.floorplan-table {
+  width: 82px;
+  min-height: 52px;
+  position: absolute;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px;
+  color: #59614d;
+  background: #e4e9dc;
+  border: 1px solid #b8c2aa;
+  border-radius: 4px;
+  box-shadow: 0 2px 6px rgba(42, 51, 35, .08);
+  transform: translate(-50%, -50%);
+  cursor: pointer;
+  transition: background .15s ease, border-color .15s ease, transform .15s ease;
+}
+
+.floorplan-table.round {
+  width: 69px;
+  min-height: 69px;
+  border-radius: 50%;
+}
+
+.floorplan-table:not(:disabled):hover {
+  border-color: #727f5d;
+  transform: translate(-50%, -50%) scale(1.05);
+}
+
+.floorplan-table.selected {
+  color: white;
+  background: #4c5940;
+  border-color: #4c5940;
+  box-shadow: 0 4px 12px rgba(48, 59, 39, .24);
+}
+
+.floorplan-table:disabled {
+  opacity: .58;
+  cursor: not-allowed;
+}
+
+.floorplan-table strong {
+  font-size: 10px;
+}
+
+.floorplan-table small {
+  font-size: 8px;
+}
+
+.floorplan-legend {
+  display: flex;
+  justify-content: center;
+  gap: 22px;
+  padding-top: 12px;
+}
+
+.floorplan-legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #767a6e;
+  font-size: 9px;
+}
+
+.legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #a0b090;
+}
+
+.legend-dot.selected {
+  background: #4c5940;
+}
+
+.floorplan-message {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 90%;
+  padding: 9px 12px;
+  color: #69705d;
+  background: rgba(255, 254, 250, .96);
+  border: 1px solid #e4e5db;
+  border-radius: 3px;
+  font-size: 10px;
+  text-align: center;
+  transform: translate(-50%, -50%);
+}
+
+.floorplan-message.error {
+  color: #8b332c;
+  background: #fff0ed;
+  border-color: #f2d5cf;
+}
+
+.preorder-section {
+  display: grid;
+  gap: 10px;
+}
+
+.menu-section-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.menu-section-heading h3 {
+  margin: 5px 0 0;
+  color: var(--ink);
+  font-family: var(--serif);
+  font-size: 23px;
+  font-weight: 500;
+  letter-spacing: -.4px;
+}
+
+.optional-label {
+  padding: 4px 8px;
+  color: #7e8277;
+  background: #f2f1eb;
+  border-radius: 20px;
+  font-size: 9px;
+}
+
+.menu-item-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.menu-item-card {
+  min-height: 114px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 13px;
+  padding: 13px;
+  background: #fffefa;
+  border: 1px solid #e9e7df;
+  border-radius: 3px;
+}
+
+.menu-item-copy {
+  min-width: 0;
+}
+
+.menu-category {
+  color: #7f896d;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.menu-item-card h4 {
+  margin: 5px 0 3px;
+  color: #34392f;
+  font-family: var(--serif);
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.menu-item-card p {
+  min-height: 27px;
+  color: #83857b;
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+.menu-price {
+  display: inline-block;
+  margin-top: 6px;
+  color: #515a45;
+  font-size: 10px;
+}
+
+.menu-add-button,
+.quantity-control button {
+  width: 29px;
+  height: 29px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  color: #566147;
+  background: #f1f3ed;
+  border: 1px solid #e0e5d8;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.menu-add-button:hover,
+.quantity-control button:not(:disabled):hover {
+  color: white;
+  background: #58664a;
+  border-color: #58664a;
+}
+
+.quantity-control {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.quantity-control button {
+  width: 25px;
+  height: 25px;
+}
+
+.quantity-control button:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+
+.quantity-control > span {
+  min-width: 14px;
+  color: #3e4635;
+  font-size: 11px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.menu-loading,
+.menu-empty {
+  min-height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #818479;
+  font-size: 10px;
+}
+
+.booking-summary {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr;
+  gap: 12px;
+  padding: 14px 15px;
+  background: #f5f5ef;
+  border: 1px solid #e5e6dc;
+  border-radius: 3px;
+}
+
+.booking-summary > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.booking-summary span {
+  color: #898c81;
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: .8px;
+  text-transform: uppercase;
+}
+
+.booking-summary strong {
+  color: #434a39;
+  font-size: 10px;
+  font-weight: 600;
+}
+
 .form-footer {
   display: flex;
   align-items: center;
@@ -1370,6 +1703,37 @@ td small {
   .booking-form {
     grid-template-columns: 1fr 1fr;
     gap: 17px 12px;
+  }
+
+  .floorplan-room {
+    min-height: 300px;
+  }
+
+  .floorplan-table {
+    width: 65px;
+    min-height: 46px;
+  }
+
+  .floorplan-table.round {
+    width: 56px;
+    min-height: 56px;
+  }
+
+  .floorplan-legend {
+    gap: 14px;
+  }
+
+  .menu-section-heading h3 {
+    font-size: 20px;
+  }
+
+  .menu-item-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .booking-summary {
+    grid-template-columns: 1fr;
+    gap: 10px;
   }
 
   .field:nth-child(1),
